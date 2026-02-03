@@ -1,0 +1,23 @@
+# --- Foundry ---
+out/
+cache/
+broadcast/
+test-results/
+
+# --- Soldeer  ---
+dependencies/
+
+# --- Environment & Secrets ---
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+slither-results.json
