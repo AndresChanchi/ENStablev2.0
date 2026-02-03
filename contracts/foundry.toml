@@ -1,0 +1,24 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["dependencies"]
+
+remappings = [
+  "v4-core/=dependencies/v4-core-4.0.0/src/",
+  "forge-std/=dependencies/forge-std-1.14.0/src/",
+  "openzeppelin/=dependencies/openzeppelin-contracts-5.5.0/contracts/"
+]
+
+[dependencies]
+forge-std = { git = "https://github.com/foundry-rs/forge-std", rev = "v1.14.0", version = "1.14.0" }
+openzeppelin-contracts = { git = "https://github.com/OpenZeppelin/openzeppelin-contracts", rev = "fcbae53", version = "5.5.0" }
+v4-core = { git = "https://github.com/Uniswap/v4-core", rev = "e50237c", version = "4.0.0" }
+
+[lint]
+exclude_lints = [
+  # I like Patrick Collins' style with the immutable and storage i_ and s_
+    "mixed-case-variable",
+    "screaming-snake-case-immutable"
+]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

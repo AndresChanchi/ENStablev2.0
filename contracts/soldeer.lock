@@ -1,0 +1,17 @@
+[[dependencies]]
+name = "forge-std"
+version = "1.14.0"
+git = "https://github.com/foundry-rs/forge-std"
+rev = "1801b0541f4fda118a10798fd3486bb7051c5dd6"
+
+[[dependencies]]
+name = "openzeppelin-contracts"
+version = "5.5.0"
+git = "https://github.com/OpenZeppelin/openzeppelin-contracts"
+rev = "fcbae5394ae8ad52d8e580a3477db99814b9d565"
+
+[[dependencies]]
+name = "v4-core"
+version = "4.0.0"
+git = "https://github.com/Uniswap/v4-core"
+rev = "e50237c43811bd9b526eff40f26772152a42daba"
