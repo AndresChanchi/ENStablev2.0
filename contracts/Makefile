@@ -1,58 +1,51 @@
 -include .env
 
-#forge script script/DeployAll.s.sol --rpc-url YOUR_RPC_URL --broadcast -vvvv
-
 # --- Variables ---
-# Use '?' to allow overriding from the command line, e.g., make test-fork V=-vv
 V        ?= -vvv
 RPC      := $(UNICHAIN_SEPOLIA_RPC_URL)
 SENDER   := 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 ACCOUNT  := agent-mockup-hackaton
 
-# --- Phony Targets (Ensures shell autocompletion works for all commands) ---
-.PHONY: build test-local test-fork coverage \
-        deploy-unichain mine-hook deploy-fork deploy-all \
-        clean anvil help
+.PHONY: build test test-fork coverage deploy-unichain mine-hook deploy-fork deploy-all clean help
 
-# Compilation and Build
+# Default build
 build:
 	forge build
 
-# Local Testing (Anvil)
-test-local:
-	forge test --fork-url http://127.0.0.1:8545 $(V)
+# PRIMARY TEST COMMAND
+# Standard 'forge test' is redirected to fork-testing because Uniswap v4 
+# dependencies (v0.8.26) and PoolManager state are required from Unichain.
+test: test-fork
 
-# Integration Testing (Unichain Fork)
+# Integration Testing via Unichain Sepolia Fork
 test-fork:
 	forge test --fork-url $(RPC) $(V)
 
-# Coverage Analysis
+# Coverage Analysis (Requires Forking to resolve external v4 calls)
 coverage:
-	forge coverage --report debug > coverage.txt
+	forge coverage --fork-url $(RPC) --report debug > coverage.txt
 
-# Secure Deployment (Interactive Wallet)
-# Utilizing the pre-decrypted 'agent-mockup-hackaton' keystore account
+# Secure Deployment using local keystore
 deploy-unichain:
-	forge script script/DeployIdentityVault.s.sol \
+	forge script script/DeployFullSystem.s.sol \
 		--rpc-url $(RPC) \
 		--account $(ACCOUNT) \
 		--sender $(SENDER) \
 		--broadcast \
 		-vvvv
 
-# Mine Hook Salt: Find the necessary salt for Hook permissions on Unichain
+# Mine Hook Salt: Finds the deterministic salt for Hook permissions
 mine-hook:
-	forge script script/MineEnstableHook.s.sol $(V)
+	forge script script/MineEnstableHook.s.sol --fork-url $(RPC) $(V)
 
-# Deployment simulation on Unichain Fork (Without spending real gas)
-# This allows checking if the Hook and Vault integrate correctly with the real PoolManager
+# Deployment Simulation (Dry-run on Fork)
 deploy-fork:
 	forge script script/DeployFullSystem.s.sol \
 		--fork-url $(RPC) \
 		--sender $(SENDER) \
 		-vvvv
 
-# Total Deployment (Mining + Hook + Vault)
+# Full Execution: Mine + Deploy Hook & Vault
 deploy-all:
 	forge script script/DeployFullSystem.s.sol \
 		--rpc-url $(RPC) \

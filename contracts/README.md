@@ -1,37 +1,39 @@
-## Foundry
+# Enstable Protocol - Agentic Liquidity Management
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+**AI-driven risk management and automated liquidity orchestration built on Uniswap v4.**
 
-Foundry consists of:
+---
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Architecture Overview
+
+Enstable uses an agentic approach to manage Uniswap v4 positions. The "Brain" (Hook) processes signals from an AI Agent to dynamically adjust liquidity ranges in the "Actuator" (IdentityVault).
+
+
 
 ## Documentation
 
-https://book.getfoundry.sh/
+For detailed information on the underlying framework, visit the [Foundry Book](https://book.getfoundry.sh/).
 
 ## Usage
 
 ### Prerequisites
 
-This project requires **Rust 1.93.0** or newer (minimum 1.88+) for dependency management with Soldeer.
+This project requires **Rust 1.93.0** or newer (minimum 1.88+) for dependency management with **Soldeer**.
 
-#### Check your rust version
-
+#### Check your Rust version:
 ```shell
 $ rustc --version
 ```
 
-#### If outdated, run:
+#### Update Rust if necessary:
 
 ```shell
 $ rustup update stable
 ```
 
-### Install
+### Installation
+
+Install Uniswap v4 core, libraries, and necessary mocks via Soldeer:
 
 ```shell
 $ forge soldeer install
@@ -39,50 +41,86 @@ $ forge soldeer install
 
 ### Build
 
-```shell
-$ forge build
-```
-
-### Test
+Compile the project using Solidity 0.8.33:
 
 ```shell
-$ forge test
+$ make build
 ```
 
-### Format
+### Testing (Forking Mandatory)
 
+Standard local execution is discouraged due to Uniswap v4 core dependency versioning (v0.8.26) and the complexity of local remappings. This project is optimized for **Unichain Sepolia Forking**, ensuring compatibility with the live `PoolManager` and official L2 state.
+
+
+#### Run all tests using Unichain Sepolia Fork
+```shell
+$ make test-fork
+```
+
+### Deployment & Orchestration
+
+#### 1. Mine Hook Salt
+
+Find the deterministic salt required for the specific Uniswap v4 Hook flags (BeforeSwap, BeforeAddLiquidity, etc.):
+
+```shell
+$ make mine-hook
+```
+
+#### 2. Fork Simulation
+
+Simulate the full system deployment (Vault + Hook) on a Unichain fork to verify integration without spending gas:
+
+```shell
+$ make deploy-fork
+```
+
+#### 3. Live Deployment
+
+Broadcast the contracts to Unichain Sepolia using a secure keystore:
+
+```shell
+$ make deploy-all
+```
+
+### Utility Commands
+
+**Format Code**
 ```shell
 $ forge fmt
 ```
 
-### Gas Snapshots
+**Gas Snapshots**
 
 ```shell
-$ forge snapshot
+$ forge snapshot --fork-url <RPC_URL>
 ```
 
-### Anvil
+**Clean Build**
 
 ```shell
-$ anvil
+$ make clean
 ```
 
-### Deploy
-
+**Coverage**
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ make coverage
 ```
+## Technical Note: Why Forking?
 
-### Cast
+-   **Version Harmony**: Allows our `0.8.33` architecture to interact seamlessly with Uniswap's `0.8.26` core contracts.
+    
+-   **Infrastructure Access**: Provides direct access to the `PoolManager` and `CREATE2` factories already deployed on Unichain.
+    
+-   **Accuracy**: Ensures tests account for L2-specific gas behaviors and native ETH handling.
+    
 
-```shell
-$ cast <subcommand>
-```
+----------
 
-### Help
+## Acknowledgments
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+-   **Framework**: Foundry (Forge, Cast, Anvil, Chisel)
+    
+-   **Core**: Uniswap v4
+    
+-   **Network**: Unichain L2
