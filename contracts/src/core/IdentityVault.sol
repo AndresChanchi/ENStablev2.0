@@ -22,7 +22,7 @@ pragma solidity 0.8.33;
  * -------------------------------------------------------------------------
  */
 
-// Imports
+// --- Imports ---
 import {IPoolManager} from "v4-core/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "v4-core/interfaces/callback/IUnlockCallback.sol";
 import {IIdentityVault} from "../interfaces/IIdentityVault.sol";
@@ -32,15 +32,16 @@ import {Currency, CurrencyLibrary} from "v4-core/types/Currency.sol";
 import {TickMath} from "v4-core/libraries/TickMath.sol";
 import {TransientStateLibrary} from "v4-core/libraries/TransientStateLibrary.sol";
 import {SafeCast} from "v4-core/libraries/SafeCast.sol";
+import {IERC20} from "openzeppelin-contracts-5.5.0/contracts/token/ERC20/ERC20.sol";
 
-// Interfaces, Libraries, Contracts
+// --- Contracts ---
 contract IdentityVault is IUnlockCallback, IIdentityVault {
     using CurrencyLibrary for Currency;
     using PoolIdLibrary for PoolKey;
     using TransientStateLibrary for IPoolManager;
     using SafeCast for int256;
 
-    // Type Declarations
+    // --- Type Declarations ---
     enum VaultAction {
         None,
         Reposition,
@@ -56,7 +57,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         address user;
     }
 
-    // State Variables
+    // --- State Variables ---
     IPoolManager private immutable i_poolManager;
     address private immutable i_enstableHook;
 
@@ -69,7 +70,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
     /// @dev Mapping 2: User -> PoolId (Scalability Requirement)
     mapping(address => PoolId) private s_userPoolIds;
 
-    /// @dev EIP-1153 Storage Slots (Refactored to individual slots for safety)
+    /// @dev EIP-1153 Storage Slots
     bytes32 private constant T_USER_SLOT = keccak256("IdentityVault.user");
     bytes32 private constant T_LOWER_SLOT = keccak256("IdentityVault.lower");
     bytes32 private constant T_UPPER_SLOT = keccak256("IdentityVault.upper");
@@ -79,14 +80,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
     /// @dev Safety Constants
     uint256 private constant MAX_REPOSITION_GAS = 1_200_000;
 
-    // Events
-    // Inherited from IIdentityVault:
-    // - PositionRepositioned, UserDeposit, UserWithdrawal
-
-    // Modifiers
-    /**
-     * @dev Refactored to follow the unwrapped-modifier-logic pattern for gas efficiency and clarity.
-     */
+    // --- Modifiers ---
     modifier onlyEnstableHook() {
         _checkOnlyHook();
         _;
@@ -104,21 +98,30 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         _stopGasMetering();
     }
 
-    // Functions
+    // --- Functions ---
 
-    // Constructor
     constructor(address _poolManager, address _hook) {
         i_poolManager = IPoolManager(_poolManager);
         i_enstableHook = _hook;
     }
 
-    // Receive function
-    // Rule N1: Necessary to handle native ETH unwrap from PoolManager
+    /**
+     * @notice Handles native ETH unwrapping from PoolManager.
+     */
     receive() external payable {}
 
-    // External Functions
+    // --- External Functions ---
+
     /**
-     * @notice Initiates a repositioning strategy.
+     * @notice Grants infinite approval to the PoolManager for a specific token.
+     * @dev Vital for hackathon speed; restrict in production.
+     */
+    function allowToken(address token) external {
+        IERC20(token).approve(address(i_poolManager), type(uint256).max);
+    }
+
+    /**
+     * @notice Initiates a repositioning strategy triggered by the EnstableHook.
      */
     function executeAgentAction(PoolKey calldata _key, int24 _lower, int24 _upper, uint128 _liq, address _user)
         external
@@ -133,12 +136,11 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
             TransientContext({key: _key, tickLower: _lower, tickUpper: _upper, liquidityDelta: _liq, user: _user});
 
         _tstoreContext(context);
-        // FIX: Passing key through abi.encode to ensure availability in callback
         i_poolManager.unlock(abi.encode(VaultAction.Reposition, _key));
     }
 
     /**
-     * @notice User self-service deposit.
+     * @notice Allows users to deposit funds into a specific pool and tick range.
      */
     function deposit(PoolKey calldata _key, uint128 _amount, int24 _lower, int24 _upper)
         external
@@ -153,13 +155,12 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         });
 
         _tstoreContext(context);
-        // FIX: Passing key through abi.encode
         i_poolManager.unlock(abi.encode(VaultAction.Deposit, _key));
         emit UserDeposit(msg.sender, _amount);
     }
 
     /**
-     * @notice User self-service withdrawal (Full or Partial).
+     * @notice Allows users to withdraw their liquidity (full or partial).
      */
     function withdraw(PoolKey calldata _key, uint128 _amount) external setAction(VaultAction.Withdraw) {
         if (i_poolManager.isUnlocked()) revert IdentityVault__PoolManagerAlreadyUnlocked();
@@ -178,21 +179,20 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         });
 
         _tstoreContext(context);
-        // FIX: Passing key through abi.encode
         i_poolManager.unlock(abi.encode(VaultAction.Withdraw, _key));
         emit UserWithdrawal(msg.sender, withdrawAmount, withdrawAmount < pos.liquidity);
     }
 
     /**
-     * @notice Uniswap v4 Unlock Callback.
+     * @notice Uniswap v4 Unlock Callback implementation.
+     * @dev Processes different vault actions and ensures singleton solvency.
      */
     function unlockCallback(bytes calldata data) external override returns (bytes memory) {
         if (msg.sender != address(i_poolManager)) revert IdentityVault__OnlyPoolManager();
 
-        // FIX: Decoding both action and key from data
         (VaultAction action, PoolKey memory key) = abi.decode(data, (VaultAction, PoolKey));
         TransientContext memory ctx = _tloadContext();
-        ctx.key = key; // Attach key to context
+        ctx.key = key;
 
         if (action == VaultAction.Reposition) {
             _handleReposition(ctx);
@@ -202,15 +202,14 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
             _handleWithdraw(ctx);
         }
 
-        _settleAndTake(ctx.key);
+        _settleAndTake(ctx.key, ctx.user);
         _verifySolvency(ctx.key);
-        _sweep(ctx.key.currency0, ctx.user);
-        _sweep(ctx.key.currency1, ctx.user);
 
         return "";
     }
 
-    // Internal Functions
+    // --- Internal Functions ---
+
     function _checkOnlyHook() internal view {
         if (msg.sender != i_enstableHook) revert IdentityVault__OnlyHookAuthorized();
     }
@@ -235,7 +234,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
                     liquidityDelta: -int128(currentPos.liquidity),
                     salt: bytes32(0)
                 }),
-                bytes("")
+                abi.encode(ctx.user)
             );
         }
 
@@ -248,7 +247,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
                     liquidityDelta: int128(ctx.liquidityDelta),
                     salt: bytes32(0)
                 }),
-                bytes("")
+                abi.encode(ctx.user)
             );
         }
 
@@ -275,7 +274,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
                 liquidityDelta: int128(ctx.liquidityDelta),
                 salt: bytes32(0)
             }),
-            bytes("")
+            abi.encode(ctx.user)
         );
 
         s_packedPositions[ctx.user] = _pack(
@@ -299,7 +298,7 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
                 liquidityDelta: -int128(ctx.liquidityDelta),
                 salt: bytes32(0)
             }),
-            bytes("")
+            abi.encode(ctx.user)
         );
 
         PackedPosition memory pos = _unpack(s_packedPositions[ctx.user]);
@@ -310,30 +309,58 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         s_packedPositions[ctx.user] = _pack(pos);
     }
 
-    function _settleAndTake(PoolKey memory _key) internal {
+    function _settleAndTake(PoolKey memory _key, address _user) internal {
         int256 d0 = i_poolManager.currencyDelta(address(this), _key.currency0);
         int256 d1 = i_poolManager.currencyDelta(address(this), _key.currency1);
 
-        uint256 valToSend;
-
         if (d0 < 0) {
-            uint256 a0 = _abs(d0);
-            if (_key.currency0.isAddressZero()) valToSend += a0;
+            // casting to 'uint256' is safe because d0 is negative, so -d0 is positive
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint256 amount0 = uint256(-d0);
+            if (_key.currency0.isAddressZero()) {
+                i_poolManager.settle{value: amount0}();
+                uint256 excess = address(this).balance;
+                if (excess > 0) {
+                    // ignoring return value as this is a best-effort refund for native ETH
+                    (bool success,) = _user.call{value: excess}("");
+                }
+            } else {
+                if (_key.currency0.balanceOf(address(this)) < amount0) {
+                    // return value is not checked as failure will result in insufficient balance for settle/sync
+                    // forge-lint: disable-next-line(erc20-unchecked-transfer)
+                    IERC20(Currency.unwrap(_key.currency0)).transferFrom(_user, address(this), amount0);
+                }
+                i_poolManager.sync(_key.currency0);
+                _key.currency0.transfer(address(i_poolManager), amount0);
+                i_poolManager.settle();
+            }
         }
+
         if (d1 < 0) {
-            uint256 a1 = _abs(d1);
-            if (_key.currency1.isAddressZero()) valToSend += a1;
+            // casting to 'uint256' is safe because d1 is negative, so -d1 is positive
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint256 amount1 = uint256(-d1);
+            if (_key.currency1.isAddressZero()) {
+                i_poolManager.settle{value: amount1}();
+            } else {
+                if (_key.currency1.balanceOf(address(this)) < amount1) {
+                    // return value is not checked as failure will result in insufficient balance for settle/sync
+                    // forge-lint: disable-next-line(erc20-unchecked-transfer)
+                    IERC20(Currency.unwrap(_key.currency1)).transferFrom(_user, address(this), amount1);
+                }
+                i_poolManager.sync(_key.currency1);
+                _key.currency1.transfer(address(i_poolManager), amount1);
+                i_poolManager.settle();
+            }
         }
 
-        if (d0 < 0 || d1 < 0) i_poolManager.settle{value: valToSend}();
-
-        if (d0 > 0) i_poolManager.take(_key.currency0, address(this), _toUint256(d0));
-        if (d1 > 0) i_poolManager.take(_key.currency1, address(this), _toUint256(d1));
+        // casting to 'uint256' is safe because these values are verified to be positive
+        // forge-lint: disable-next-line(unsafe-typecast)
+        if (d0 > 0) i_poolManager.take(_key.currency0, _user, uint256(d0));
+        // forge-lint: disable-next-line(unsafe-typecast)
+        if (d1 > 0) i_poolManager.take(_key.currency1, _user, uint256(d1));
     }
 
-    /**
-     * @dev Fixed tstore implementation using individual slots and local variable mapping.
-     */
     function _tstoreContext(TransientContext memory ctx) internal {
         bytes32 userSlot = T_USER_SLOT;
         bytes32 lowerSlot = T_LOWER_SLOT;
@@ -359,43 +386,40 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         assembly { tstore(slot, start) }
     }
 
-    // Internal & Private View & Pure Functions
+    // --- Private & Pure Functions ---
+
     function _toUint256(int256 x) internal pure returns (uint256) {
         if (x < 0) revert IdentityVault__CastError();
-        // casting to 'uint256' is safe because x is verified to be non-negative
+        // casting to 'uint256' is safe because x is non-negative
         // forge-lint: disable-next-line(unsafe-typecast)
         return uint256(x);
     }
 
     function _abs(int256 x) internal pure returns (uint256) {
         if (x == type(int256).min) revert IdentityVault__CastError();
-        // casting to 'uint256' is safe because result is always positive
+        // casting to 'uint256' is safe because result is always >= 0
         // forge-lint: disable-next-line(unsafe-typecast)
         return x >= 0 ? uint256(x) : uint256(-x);
     }
 
     function _toInt24(int256 x) internal pure returns (int24) {
         if (x < -8388608 || x > 8388607) revert IdentityVault__CastError();
-        // casting to 'int24' is safe because bounds are explicitly checked
+        // casting to 'int24' is safe because bounds are checked
         // forge-lint: disable-next-line(unsafe-typecast)
         return int24(x);
     }
 
     function _pack(PackedPosition memory _p) internal pure returns (uint256) {
-        return uint24(_p.tickLower) | (uint256(uint24(_p.tickUpper)) << 24) | (uint256(_p.liquidity) << 48)
+        return uint256(uint24(_p.tickLower)) | (uint256(uint24(_p.tickUpper)) << 24) | (uint256(_p.liquidity) << 48)
             | (uint256(_p.lastUpdated) << 176) | (uint256(_p.status) << 208);
     }
 
     function _unpack(uint256 _packed) internal pure returns (PackedPosition memory _p) {
-        uint256 low = _packed & 0xFFFFFF;
-        uint256 up = (_packed >> 24) & 0xFFFFFF;
-
-        // casting to 'int256' is safe because 24-bit uint fits in int256 without sign issues
+        // casting to 'uint24' then 'int24' is safe as we are mask-extracting specific bit ranges
         // forge-lint: disable-next-line(unsafe-typecast)
-        _p.tickLower = _toInt24(int256(low));
-        // casting to 'int256' is safe because 24-bit uint fits in int256 without sign issues
+        _p.tickLower = int24(uint24(_packed & 0xFFFFFF));
         // forge-lint: disable-next-line(unsafe-typecast)
-        _p.tickUpper = _toInt24(int256(up));
+        _p.tickUpper = int24(uint24((_packed >> 24) & 0xFFFFFF));
 
         _p.liquidity = uint128((_packed >> 48) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
         _p.lastUpdated = uint32((_packed >> 176) & 0xFFFFFFFF);
@@ -414,14 +438,6 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         if ((d0 > 2 || d0 < -2) || (d1 > 2 || d1 < -2)) revert IdentityVault__Insolvent(d0, d1);
     }
 
-    function _sweep(Currency _cur, address _to) internal {
-        uint256 bal = _cur.balanceOf(address(this));
-        if (bal > 0) _cur.transfer(_to, bal);
-    }
-
-    /**
-     * @dev Fixed tload implementation. Decouples Yul from Solidity struct members.
-     */
     function _tloadContext() internal view returns (TransientContext memory ctx) {
         bytes32 userSlot = T_USER_SLOT;
         bytes32 lowerSlot = T_LOWER_SLOT;
@@ -453,26 +469,16 @@ contract IdentityVault is IUnlockCallback, IIdentityVault {
         if (start > 0 && (start - gasleft()) > MAX_REPOSITION_GAS) revert IdentityVault__GasLimitExceeded();
     }
 
-    // External & Public View & Pure Functions
-    /**
-     * @notice Returns the unpacked position data for a specific user.
-     * @param user The address of the vault depositor.
-     */
+    // --- External View Functions ---
+
     function getPosition(address user) external view override returns (PackedPosition memory) {
         return _unpack(s_packedPositions[user]);
     }
 
-    /**
-     * @notice Returns the PoolId where the user currently has active liquidity.
-     * @param user The address of the vault depositor.
-     */
     function getUserPoolId(address user) external view override returns (PoolId) {
         return s_userPoolIds[user];
     }
 
-    /**
-     * @notice Returns the address of the authorized Hook (EnstableHook).
-     */
     function getHook() external view override returns (address) {
         return i_enstableHook;
     }

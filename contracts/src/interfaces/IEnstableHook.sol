@@ -23,6 +23,8 @@ interface IEnstableHook is IHooks {
     error EnstableHook__ExtremeVolatility();
     error EnstableHook__InvalidHookData();
     error EnstableHook__CircuitBreakerActive();
+    error EnstableHook__InvalidBounds();
+    error EnstableHook__InvalidRangeProposed();
 
     // Type declarations
     struct AgentSignal {
