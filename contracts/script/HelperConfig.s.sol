@@ -8,62 +8,51 @@ pragma solidity 0.8.33;
  * @dev Centralizes contract addresses like PoolManager and Agent wallets across chains.
  */
 
-// Imports
+// --- Imports ---
 import {Script} from "forge-std/Script.sol";
 
-// Interfaces, Libraries, Contracts
+// --- Contracts ---
 contract HelperConfig is Script {
-    // Type Declarations
+    // --- Type Declarations ---
     struct NetworkConfig {
         address poolManager;
         address hook;
         address agentWallet;
     }
 
-    // State Variables
+    // --- State Variables ---
     NetworkConfig public activeNetworkConfig;
 
-    // Constants
-    // Unichain Sepolia PoolManager Address
     address public constant UNICHAIN_POOL_MANAGER = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
     uint256 public constant UNICHAIN_SEPOLIA_CHAIN_ID = 1301;
 
-    // Functions
+    // --- Functions ---
 
     constructor() {
         if (block.chainid == UNICHAIN_SEPOLIA_CHAIN_ID) {
             activeNetworkConfig = getUnichainSepoliaConfig();
         } else {
-            activeNetworkConfig = getOrCreateAnvilEthConfig();
+            // By default, we use the Unichain configuration.
+            // This forces tests to run on a Fork to locate the PoolManager.
+            activeNetworkConfig = getUnichainSepoliaConfig();
         }
     }
 
-    // External & Public View & Pure Functions
-
     /**
-     * @notice Returns configuration for Unichain Sepolia testnet.
+     * @notice Returns the configuration for the Unichain Sepolia network.
      */
     function getUnichainSepoliaConfig() public pure returns (NetworkConfig memory) {
-        return NetworkConfig({
-            poolManager: UNICHAIN_POOL_MANAGER,
-            hook: address(0), // To be updated after mining
-            agentWallet: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-        });
-    }
-
-    /**
-     * @notice Returns configuration for local Anvil environment.
-     * @dev Defaults to Unichain addresses if no local state is found.
-     */
-    function getOrCreateAnvilEthConfig() public view returns (NetworkConfig memory) {
-        if (activeNetworkConfig.poolManager != address(0)) {
-            return activeNetworkConfig;
-        }
-
         return NetworkConfig({
             poolManager: UNICHAIN_POOL_MANAGER,
             hook: address(0),
             agentWallet: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
         });
+    }
+
+    /**
+     * @notice Maintains compatibility with existing scripts but redirects to Unichain config.
+     */
+    function getOrCreateAnvilEthConfig() public pure returns (NetworkConfig memory) {
+        return getUnichainSepoliaConfig();
     }
 }

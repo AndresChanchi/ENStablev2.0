@@ -1,5 +1,7 @@
 -include .env
 
+#forge script script/DeployAll.s.sol --rpc-url YOUR_RPC_URL --broadcast -vvvv
+
 # --- Variables ---
 # Use '?' to allow overriding from the command line, e.g., make test-fork V=-vv
 V        ?= -vvv
