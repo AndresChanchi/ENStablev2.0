@@ -2,6 +2,10 @@
 src = "src"
 out = "out"
 libs = ["dependencies"]
+via_ir = true
+optimizer = true
+optimizer_runs = 200
+fs_permissions = [{ access = "read-write", path = "./" }]
 
 remappings = [
   "v4-core/=dependencies/v4-core-4.0.0/src/",

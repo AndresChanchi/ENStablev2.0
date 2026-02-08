@@ -1,8 +1,21 @@
-# ENStable
+# Rebalancheese
 
 > **Our team is developing a Uniswap v4 Hook that audits liquidity based on your ENS risk profile.**
 
 The idea has become much more concrete as we focus on **Unichain L2**. We are integrating **ENS L2 Primary Names** to define position ownership, ensuring a decentralized identity layer for our agentic vault. We are now working at full speed to meet the submission deadline and are confident in delivering a functional MVP that showcases a truly simple and secure vault controlled by an intelligent off-chain agent.
+
+---
+
+## 🚀 Deployed Contracts (Unichain Sepolia)
+
+The protocol has been successfully deployed and verified. You can interact with the following addresses:
+
+| Contract | Address | Blockscout Link |
+| :--- | :--- | :--- |
+| **EnstableHook** | `0x09D148e0D962B8a02b66adE4d8A5c1E290630A80` | [View on Blockscout](https://unichain-sepolia.blockscout.com/address/0x09D148e0D962B8a02b66adE4d8A5c1E290630A80) |
+| **IdentityVault** | `0x08926165839b6e0547dF42394fEE7aa8096b2827` | [View on Blockscout](https://unichain-sepolia.blockscout.com/address/0x08926165839b6e0547dF42394fEE7aa8096b2827) |
+| **Mock USDC (TKA)** | `0xE479344a24F591174b391D7Db8c2b1CC1be281Aa` | [View on Blockscout](https://unichain-sepolia.blockscout.com/address/0xE479344a24F591174b391D7Db8c2b1CC1be281Aa) |
+| **Mock ETH (TKB)** | `0xC75c91414F0f1B25286DE56A9f8dBFDBeF8d6284` | [View on Blockscout](https://unichain-sepolia.blockscout.com/address/0xC75c91414F0f1B25286DE56A9f8dBFDBeF8d6284) |
 
 ---
 
@@ -67,35 +80,46 @@ flowchart TD
 
 The "stubborn" vault that holds the funds. It validates that the `AgentSignal` matches the user's intent.
 
-- **Sovereign Withdrawals:** Users can bypass the agent and withdraw their ETH/USDC at any time.
-- **Solvency Guard:** Internal checks with 2-wei tolerance to ensure zero debt with the `PoolManager`.
+-   **Sovereign Withdrawals:** Users can bypass the agent and withdraw their ETH/USDC at any time.
+    
+-   **Solvency Guard:** Internal checks with 2-wei tolerance to ensure zero debt with the `PoolManager`.
+    
 
 ### 2. The Hook (The Actuator)
 
 A custom Uniswap v4 Hook that performs:
 
-- **Dynamic Fee Adjustment:** Based on injected volatility data from the agent.
-- **On-chain Validation:** It queries the ENS L2 Primary Name to ensure the transaction signer is authorized by the position owner.
+-   **Dynamic Fee Adjustment:** Based on injected volatility data from the agent.
+    
+-   **On-chain Validation:** It queries the ENS L2 Primary Name to ensure the transaction signer is authorized by the position owner.
+    
 
 ### 3. Off-Chain Agent (The Brain)
 
 A Python-based agent that monitors Unichain market data.
 
-- Reads **ENS Text Records** (e.g., `strategy_stop`) to customize the protection for each individual user.
-- Injects signed signals into the Hook to trigger liquidity movements.
+-   Reads **ENS Text Records** (e.g., `strategy_stop`) to customize the protection for each individual user.
+    
+-   Injects signed signals into the Hook to trigger liquidity movements.
+    
 
----
+----------
 
 ## 🏗️ Stack
 
-- **Network:** Unichain L2
-- **Identity:** ENS (L2 Reverse Registrars)
-- **DEX:** Uniswap v4 (Hooks & PoolManager)
-- **Language:** Solidity (Foundry) & Python (Agent)
+-   **Network:** Unichain L2
+    
+-   **Identity:** ENS (L2 Reverse Registrars)
+    
+-   **DEX:** Uniswap v4 (Hooks & PoolManager)
+    
+-   **Language:** Solidity (Foundry) & Python (Agent)
+    
 
----
+----------
 
 ## 🔒 Security
 
-- **Global Slippage Cap:** Hardcoded 3% limit to prevent toxic flow or agent manipulation.
-- **Whitelisted Execution:** Only the designated AI Wallet can signal rebalances, while only the User can withdraw funds.
+-   **Global Slippage Cap:** Hardcoded 3% limit to prevent toxic flow or agent manipulation.
+    
+-   **Whitelisted Execution:** Only the designated AI Wallet can signal rebalances, while only the User can withdraw funds.
