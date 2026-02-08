@@ -9,18 +9,14 @@ import PriceChart from "../components/PriceChart";
 
 export default function App() {
   const { address, isConnected } = useAccount();
-  // FIX: En Wagmi v2 es 'isPending', no 'isLoading'
   const { connect, connectors, isPending: isConnecting } = useConnect(); 
   const { disconnect } = useDisconnect();
   
-  // OBTENER ENS REAL (Si existe en Mainnet/Sepolia)
   const { data: ensName } = useEnsName({ address });
 
-  // ESTADOS
   const [logs, setLogs] = useState<string[]>([]);
   const [price, setPrice] = useState<number>(0);
   
-  // ESTADOS IDENTITY/RISK
   const [riskLevel, setRiskLevel] = useState<number | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -33,7 +29,6 @@ export default function App() {
     setLogs((prev) => [...prev, message]);
   };
 
-  // Check inicial de Identidad
   useEffect(() => {
     if (isConnected && !riskLevel) {
       const timer = setTimeout(() => {
@@ -53,7 +48,6 @@ export default function App() {
     addLog(`🔗 Linked to Identity: ${ensName || address?.slice(0, 8) + "..."}`);
   };
 
-  // Ticker (Binance)
   useEffect(() => {
     const updateVisualPrice = async () => {
       try {
@@ -69,18 +63,19 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Agente
   useEffect(() => {
     if (isConnected && address && riskLevel) {
-      // Pasamos el ensName real o simulado al agente
-      const stopAgent = startAgentMonitoring(address, ensName, addLog, riskLevel); 
+      // FIX: Cast riguroso para evitar errores de tipo en producción
+      const ensString = (ensName || address) as `0x${string}`;
+      const stopAgent = startAgentMonitoring(address, ensString, addLog, riskLevel); 
       return () => stopAgent();
     }
   }, [isConnected, address, riskLevel, ensName]);
 
   const handleConnect = () => {
-    if (connectors.length > 0) {
-      connect({ connector: connectors[0] });
+    const connector = connectors[0];
+    if (connector) {
+      connect({ connector });
     }
   };
 
@@ -99,7 +94,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* BOTÓN CONECTAR */}
         <button 
           onClick={isConnected ? () => disconnect() : handleConnect}
           disabled={isConnecting}
@@ -113,7 +107,6 @@ export default function App() {
           ) : isConnected ? (
             <>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              {/* Muestra el ENS si existe, si no recorta la address */}
               {ensName || `${address?.slice(0, 6)}...${address?.slice(-4)}`}
             </>
           ) : (
@@ -122,22 +115,21 @@ export default function App() {
         </button>
       </header>
 
-      {/* MODAL ONBOARDING */}
       {showOnboarding && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] p-8 max-w-md w-full shadow-2xl border border-primary/20 scale-100 animate-in zoom-in-95 duration-300">
             <div className="flex justify-center mb-4">
-               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-3xl">🛡️</div>
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-3xl">🛡️</div>
             </div>
             <h3 className="text-2xl font-black text-center mb-2 text-zinc-800">Set Your Identity</h3>
-            <p className="text-zinc-500 text-center mb-8 text-sm px-4">
+            <div className="text-zinc-500 text-center mb-8 text-sm px-4">
               {ensName ? (
                 <>Welcome back, <span className="font-bold text-primary">{ensName}</span>.</>
               ) : (
                 "No ENS detected. Using temporary Identity."
               )}
               {" "}Select your risk profile to link with your node on Unichain.
-            </p>
+            </div>
             
             <div className="grid gap-3">
               {[
@@ -164,11 +156,10 @@ export default function App() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
         <div className="lg:col-span-4 space-y-8">
-          {/* Pasamos la función para reabrir el modal */}
           <LiquidityCard 
             currentPrice={price} 
             onChangeIdentity={() => setShowOnboarding(true)} 
-            userEns={ensName}
+            userEns={ensName || undefined}
           />
           <div className="h-[280px] bg-surface rounded-[32px] p-4 border border-secondary/10">
             <PriceChart currentPrice={price} />
