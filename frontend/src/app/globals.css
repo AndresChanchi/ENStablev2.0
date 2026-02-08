@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────
+   🎨 1. Design Tokens Rebalancheese
+   ─────────────────────────────── */
+@theme {
+  /* Colores principales del ecosistema BAE */
+  --color-primary: #ff9689; /* rosa suave - títulos destacados */
+  --color-secondary: #9fc0af; /* verde suave - header superior */
+  --color-tertiary: #c6e2e3; /* azul claro - dashboard/test */
+  --color-background: #fff8ea; /* fondo por defecto */
+  --color-surface: #ffffff; /* componentes o tarjetas */
+  --color-accent: #acdee7; /* azul-acento flecha izquierda */
+  --color-highlight: #fff2c3; /* amarillo pálido - contraste */
+  --color-text-main: #4b4b4b; /* texto general */
+  --color-on-primary: #ffffff; /* texto sobre fondo rosa */
+}
+
+/* ───────────────────────────────
+   🧩 2. Utilidades Personalizadas
+   ─────────────────────────────── */
+
+/* 🎨 Backgrounds */
+@utility bg-primary {
+  background-color: var(--color-primary);
+}
+@utility bg-secondary {
+  background-color: var(--color-secondary);
+}
+@utility bg-tertiary {
+  background-color: var(--color-tertiary);
+}
+@utility bg-surface {
+  background-color: var(--color-surface);
+}
+@utility bg-background {
+  background-color: var(--color-background);
+}
+
+/* 🎨 Textos */
+@utility text-main {
+  color: var(--color-text-main);
+}
+@utility text-primary {
+  color: var(--color-primary);
+}
+@utility text-accent {
+  color: var(--color-accent);
+}
+
+/* 🧱 Bordes */
+@utility border-primary {
+  border-color: var(--color-primary);
+}
+@utility border-secondary {
+  border-color: var(--color-secondary);
+}
+
+/* 📐 Layout base */
+@utility container-responsive {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+
+  @media (min-width: 768px) {
+    max-width: 768px;
+  }
+  @media (min-width: 1024px) {
+    max-width: 1024px;
+  }
+  @media (min-width: 1280px) {
+    max-width: 1280px;
+  }
+}
+
+/* ───────────────────────────────
+   💡 3. Iconos Universales
+   ─────────────────────────────── */
+.icon-wrapper {
+  @apply bg-white rounded-full flex items-center justify-center;
+  width: 40px;
+  height: 40px;
+  color: var(--color-secondary);
+  padding: 6px;
+}
+
+.icon-svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ───────────────────────────────
+   ✨ 4. Tipografía y base global
+   ─────────────────────────────── */
+html {
+  color-scheme: light;
+  background-color: var(--color-background);
+}
+
+body {
+  @apply bg-background text-main;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+  color: var(--color-text-main);
+}
+
+.hero-title {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.text-heading {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  color: var(--color-primary);
+}
+
+.text-subheading {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  color: var(--color-text-main);
+}
+
+/* ───────────────────────────────
+   📱 5. Mobile behaviour
+   ─────────────────────────────── */
+.mobile-menu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+.mobile-menu.open {
+  max-height: 300px;
+  transition: max-height 0.3s ease-in;
+}
